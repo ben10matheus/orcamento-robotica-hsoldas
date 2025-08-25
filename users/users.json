@@ -1,0 +1,5 @@
+{
+  "users": [
+    {"email":"hsoldas@hsoldas.com","senha":"123456","nome":"Admin","perfil":"admin"}
+  ]
+}

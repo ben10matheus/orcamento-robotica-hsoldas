@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HSOLDAS — Login</title>
+  <meta name="color-scheme" content="light dark">
+  <style>
+    :root{
+      --bg:#f5f7fb; --card:#fff; --text:#111827; --muted:#6b7280; --line:#e5e7eb; --panel:#166428; --ok:#16a34a; --err:#dc2626; --radius:14px;
+    }
+    @media (prefers-color-scheme: dark){:root{--bg:#0b1220;--card:#0f172a;--text:#e5e7eb;--muted:#9ca3af;--line:#1f2937}}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,Roboto,sans-serif;display:grid;place-items:center;padding:24px}
+    .card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.06);text-align:center}
+    h1{margin:0 0 6px;font-size:20px} .muted{color:var(--muted);font-size:14px;margin:0 0 16px}
+    .logo{width:72px;height:72px;margin:0 auto 12px;display:block}
+    label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px;text-align:left}
+    .input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:transparent;color:inherit}
+    .row{display:flex;justify-content:space-between;align-items:center;margin:10px 0 16px;font-size:14px;color:var(--muted)}
+    .btn{width:100%;padding:12px 14px;border:0;border-radius:10px;background:var(--panel);color:#fff;font-weight:700;cursor:pointer}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
+    .alert{display:none;margin:0 0 12px;padding:10px;border-radius:10px;font-size:14px}
+    .alert.ok{display:block;background:color-mix(in srgb, var(--ok) 12%, transparent);color:color-mix(in srgb, var(--ok) 90%, black);border:1px solid color-mix(in srgb, var(--ok) 35%, transparent)}
+    .alert.err{display:block;background:color-mix(in srgb, var(--err) 12%, transparent);color:color-mix(in srgb, var(--err) 90%, black);border:1px solid color-mix(in srgb, var(--err) 35%, transparent)}
+    .foot{margin-top:12px;font-size:12px;color:var(--muted);text-align:center}
+    .sr-only{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  </style>
+</head>
+<body>
+  <!--
+    ==========================================================
+    Login HSOLDAS — uso interno
+    • Credenciais ficam em /users/users.json
+    • Formato do users.json:
+      {
+        "users": [
+          {"email":"admin@hsoldas.com","senha":"123456","nome":"Admin","perfil":"admin"},
+          {"email":"operador@hsoldas.com","senha":"123456","nome":"Operador","perfil":"user"}
+        ]
+      }
+    ==========================================================
+  -->
+
+  <main class="card" role="main" aria-labelledby="t">
+    <img src="imagens/logo-hsoldas.png" alt="Logo HSOLDAS" class="logo">
+    <h1 id="t">Acesso ao Catálogo</h1>
+    <p class="muted">Área restrita HSOLDAS.</p>
+
+    <div id="alert" class="alert" role="status" aria-live="polite"></div>
+
+    <form id="f" novalidate>
+      <label for="e">E‑mail</label>
+      <input id="e" class="input" name="email" type="email" autocomplete="username" required placeholder="nome@hsoldas.com">
+
+      <div style="height:10px"></div>
+      <label for="p">Senha</label>
+      <input id="p" class="input" name="senha" type="password" autocomplete="current-password" required placeholder="••••••">
+
+      <div class="row">
+        <label><input type="checkbox" id="remember"> Lembrar</label>
+        <button type="button" id="show" style="background:none;border:0;color:var(--muted);cursor:pointer">mostrar</button>
+      </div>
+
+      <button id="btn" class="btn" type="submit">Entrar</button>
+      <p class="foot">Em caso de perda de senha, entrar em contato com :<code>Vibaz</code></p>
+    </form>
+  </main>
+
+  <script>
+    const USERS_URL = 'users/users.json';
+    const AUTH_KEY = 'auth.hsoldas.v1';
+    const REDIRECT = 'index.html';
+
+    const $ = (id)=>document.getElementById(id);
+    const alertBox = $('alert');
+    const form = $('f');
+    const btn = $('btn');
+
+    $('show').addEventListener('click',()=>{
+      const i = $('p'); i.type = i.type==='password'?'text':'password';
+      $('show').textContent = i.type==='password'?'mostrar':'ocultar';
+    });
+
+    function notify(msg, ok=false){
+      alertBox.textContent = msg; alertBox.className = 'alert ' + (ok? 'ok':'err');
+    }
+    function clearNotify(){ alertBox.textContent=''; alertBox.className='alert'; }
+
+    function saveSession(payload, remember){
+      const data = JSON.stringify({ ...payload, ts: Date.now() });
+      (remember?localStorage:sessionStorage).setItem(AUTH_KEY, data);
+      (remember?sessionStorage:localStorage).removeItem(AUTH_KEY);
+    }
+
+    async function loadUsers(){
+      const res = await fetch(USERS_URL, {cache:'no-store'});
+      if(!res.ok) throw new Error('Não foi possível ler users.json');
+      const data = await res.json();
+      if(!data || !Array.isArray(data.users)) throw new Error('Formato inválido em users.json');
+      return data.users;
+    }
+
+    async function signIn(email, senha){
+      const users = await loadUsers();
+      const u = users.find(x => x.email?.toLowerCase()===email.toLowerCase() && String(x.senha)===String(senha));
+      if(!u) throw new Error('E‑mail ou senha incorretos.');
+      const token = btoa(email + '|' + Date.now());
+      return { token, user: { email:u.email, nome:u.nome||u.email, perfil:u.perfil||'user' } };
+    }
+
+    form.addEventListener('submit', async (ev)=>{
+      ev.preventDefault(); clearNotify();
+      const email = $('e').value.trim(); const senha = $('p').value; const remember = $('remember').checked;
+      if(!email){ return notify('Informe o e‑mail.'); }
+      if(!senha){ return notify('Informe a senha.'); }
+      btn.disabled = true; btn.textContent = 'Verificando...';
+      try{
+        const { token, user } = await signIn(email, senha);
+        saveSession({ token, user }, remember);
+        notify('Acesso liberado. Redirecionando...', true);
+        setTimeout(()=>location.href = REDIRECT, 400);
+      }catch(err){
+        console.error(err); notify(err.message || 'Falha no login.');
+      }finally{
+        btn.disabled = false; btn.textContent = 'Entrar';
+      }
+    });
+
+    window.routeGuard = function(opts={}){
+      const raw = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
+      if(!raw){ location.replace(opts.loginPath||'login.html'); return null; }
+      try { return JSON.parse(raw); } catch { sessionStorage.removeItem(AUTH_KEY); localStorage.removeItem(AUTH_KEY); location.replace(opts.loginPath||'login.html'); }
+    }
+
+    window.simpleLogout = function(){ sessionStorage.removeItem(AUTH_KEY); localStorage.removeItem(AUTH_KEY); location.href = 'login.html'; }
+  </script>
+</body>
+</html>
