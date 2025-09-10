@@ -29,8 +29,8 @@
 
     /* ===== Botões — verde claro ===== */
     --btn:#5ccda7;
-    --btn-hover:#49b894;   /* hover ~15% mais escuro  */
-    --btn-shadow:#3fa383;  /* sombra p/ relevo        */
+    --btn-hover:#49b894;
+    --btn-shadow:#3fa383;
 
     --black:#000;
   }
@@ -276,17 +276,15 @@
       <table class="tbl" id="tbl">
         <thead>
           <tr>
-            <th style="width:58%">Produto</th>
-            <th style="width:8%">Qtd</th>
-            <th class="right" style="width:17%">Total líquido</th>
-            <th class="right" style="width:17%">Total c/ impostos</th>
+            <th style="width:66%">Produto</th>
+            <th style="width:10%">Qtd</th>
+            <th class="right" style="width:24%">Total EXW</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
         <tfoot>
-          <tr><td colspan="4" class="right" id="subLiq">Subtotal valor líquido</td></tr>
-          <tr><td colspan="4" class="right" id="subImp">Subtotal valor c/ impostos</td></tr>
-          <tr><td colspan="4" class="right" id="totGeral">Total geral</td></tr>
+          <tr><td colspan="3" class="right" id="subLiq">Subtotal valor EXW</td></tr>
+          <tr><td colspan="3" class="right" id="totGeral">Total geral</td></tr>
         </tfoot>
       </table>
     </div>
@@ -310,17 +308,15 @@
       <table class="tbl">
         <thead>
           <tr>
-            <th style="width:58%">Produto</th>
-            <th style="width:8%">Qtd</th>
-            <th class="right" style="width:17%">Total líquido</th>
-            <th class="right" style="width:17%">Total c/ impostos</th>
+            <th style="width:66%">Produto</th>
+            <th style="width:10%">Qtd</th>
+            <th class="right" style="width:24%">Total EXW</th>
           </tr>
         </thead>
         <tbody id="cartTbody"></tbody>
         <tfoot>
-          <tr><td colspan="4" class="right" id="cartSubLiq">Subtotal valor líquido</td></tr>
-          <tr><td colspan="4" class="right" id="cartSubImp">Subtotal valor c/ impostos</td></tr>
-          <tr><td colspan="4" class="right" id="cartTotGeral">Total geral</td></tr>
+          <tr><td colspan="3" class="right" id="cartSubLiq">Subtotal valor EXW</td></tr>
+          <tr><td colspan="3" class="right" id="cartTotGeral">Total geral</td></tr>
         </tfoot>
       </table>
     </div>
@@ -330,7 +326,7 @@
 <script>
 /* ================== JS ================== */
 
-/* ===== Auth guard / Logout (compatível com login.html) ===== */
+/* ===== Auth guard / Logout ===== */
 const AUTH_KEY = 'auth.hsoldas.v1';
 function routeGuard(opts={}){
   const raw = localStorage.getItem(AUTH_KEY) || sessionStorage.getItem(AUTH_KEY);
@@ -346,11 +342,10 @@ function simpleLogout(){
   localStorage.removeItem(AUTH_KEY);
   location.href = 'login.html';
 }
-// Exigir login antes de prosseguir
 const sess = routeGuard({ loginPath: 'login.html' });
 
 /* ===== Helpers ===== */
-/* -> Agora o catálogo é em DÓLAR */
+/* -> Catálogo em DÓLAR (formatação) */
 const money = v => isFinite(v) ? v.toLocaleString('en-US',{style:'currency',currency:'USD'}) : '-';
 const parseBR = s => {
   if(typeof s==='number') return s;
@@ -383,7 +378,7 @@ const $=(s,e=document)=>e.querySelector(s);
 const catalog=$('#catalog'), hint=$('#hint'), inputSearch=$('#search');
 const btnClear=$('#btnClear'), btnClearSearch=$('#btnClearSearch');
 const btnCloseQuote=$('#btnCloseQuote'), overlay=$('#overlay'), btnPrint=$('#btnPrint'), btnBack=$('#btnBack');
-const selGrid=$('#selGrid'), tbody=$('#tbody'), subLiq=$('#subLiq'), subImp=$('#subImp'), totGeral=$('#totGeral'), meta=$('#meta'), sug=$('#sug');
+const selGrid=$('#selGrid'), tbody=$('#tbody'), subLiq=$('#subLiq'), totGeral=$('#totGeral'), meta=$('#meta'), sug=$('#sug');
 
 /* Header user info */
 const userNameEl = document.getElementById('userName');
@@ -395,11 +390,11 @@ if(btnLogout){ btnLogout.addEventListener('click', simpleLogout); }
 const btnCart=$('#btnCart'), cartBadge=$('#cartBadge');
 const cartOverlay=$('#cartOverlay'), btnCloseCart=$('#btnCloseCart');
 const cartSelGrid=$('#cartSelGrid'), cartTbody=$('#cartTbody');
-const cartSubLiq=$('#cartSubLiq'), cartSubImp=$('#cartSubImp'), cartTotGeral=$('#cartTotGeral'), cartMeta=$('#cartMeta');
+const cartSubLiq=$('#cartSubLiq'), cartTotGeral=$('#cartTotGeral'), cartMeta=$('#cartMeta');
 
 /* ===== Carregar JSON único (em dólar) ===== */
 async function loadData(){
-  const url = 'data/pr.json'; // ajuste aqui se quiser usar 'data/outros.json'
+  const url = 'data/pr.json'; // mude para 'data/outros.json' se preferir
   try{
     const res=await fetch(url,{cache:'no-store'});
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -443,11 +438,14 @@ function renderCards(){
     const imgEl=media.querySelector('img'); loadImageWithFallback(imgEl,candidatesFor(it.nome));
 
     const body=document.createElement('div'); body.className='body';
+    /* Cards: apenas "Valor EXW" (usa it.ad) */
     body.innerHTML=`
       <div class="title">${it.nome}</div>
       <div class="row">
-        <div><label>Valor líquido</label><input class="price" value="${money(it.ad)}" readonly></div>
-        <div><label>Valor c/ impostos</label><input class="price" value="${money(it.an)}" readonly></div>
+        <div>
+          <label>Valor EXW</label>
+          <input class="price" value="${money(it.ad)}" readonly>
+        </div>
       </div>
       <div class="row">
         <div style="max-width:170px"><label>Quantidade</label><input class="qty" type="number" min="1" step="1" value="${it.qty}"></div>
@@ -494,8 +492,7 @@ function buildPreview(){
   const itensSel = state.all.filter(it=>it.incluir);
 
   selGrid.innerHTML=''; tbody.innerHTML='';
-  subLiq.textContent='Subtotal valor líquido';
-  subImp.textContent='Subtotal valor c/ impostos';
+  subLiq.textContent='Subtotal valor EXW';
   totGeral.textContent='Total geral';
   meta.textContent=`Somente itens selecionados`;
 
@@ -504,18 +501,17 @@ function buildPreview(){
     return;
   }
 
-  // cartões acima da tabela
+  // cartões acima da tabela (só EXW)
   itensSel.forEach((it)=>{
-    const totalLiq = (it.ad * it.qty);
-    const totalImp = (it.an * it.qty);
+    const totalEXW = (it.ad * it.qty);
 
     const box=document.createElement('div'); box.className='sel-item';
     box.innerHTML=`
       <div class="imgbox"><img alt="${it.nome}"></div>
       <div class="info">
         <h4>${it.nome}</h4>
-        <div class="row"><div>Valor líquido: <b>${money(it.ad)}</b></div><div>Valor c/ impostos: <b>${money(it.an)}</b></div></div>
-        <div class="row"><div>Total líquido: <b>${money(totalLiq)}</b></div><div>Total c/ impostos: <b>${money(totalImp)}</b></div></div>
+        <div class="row"><div>Valor EXW: <b>${money(it.ad)}</b></div></div>
+        <div class="row"><div>Total EXW: <b>${money(totalEXW)}</b></div></div>
         <div>Qtd: <b>${it.qty}</b></div>
       </div>
     `;
@@ -523,26 +519,23 @@ function buildPreview(){
     selGrid.appendChild(box);
   });
 
-  // tabela (apenas Qtd / Totais)
-  let subtotalLiq=0, subtotalImp=0;
+  // tabela
+  let subtotalEXW=0;
   itensSel.forEach((it)=>{
-    const totalLiq = (it.ad * it.qty);
-    const totalImp = (it.an * it.qty);
-    subtotalLiq += totalLiq; subtotalImp += totalImp;
+    const totalEXW = (it.ad * it.qty);
+    subtotalEXW += totalEXW;
 
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td>${it.nome}</td>
       <td class="right">${it.qty}</td>
-      <td class="right">${money(totalLiq)}</td>
-      <td class="right">${money(totalImp)}</td>
+      <td class="right">${money(totalEXW)}</td>
     `;
     tbody.appendChild(tr);
   });
 
-  subLiq.textContent = `Subtotal valor líquido       ${money(subtotalLiq)}`;
-  subImp.textContent  = `Subtotal valor c/ impostos   ${money(subtotalImp)}`;
-  totGeral.textContent= `Total geral                   ${money(subtotalImp)}`;
+  subLiq.textContent = `Subtotal valor EXW           ${money(subtotalEXW)}`;
+  totGeral.textContent= `Total geral                   ${money(subtotalEXW)}`;
 }
 
 /* ===== Carrinho ===== */
@@ -554,56 +547,49 @@ function updateCartBadge(){
 function buildCart(){
   const itensSel = state.all.filter(it=>it.incluir);
 
-  cartSelGrid.innerHTML=''; cartTbody.innerHTML='';
-  cartSubLiq.textContent='Subtotal valor líquido';
-  cartSubImp.textContent='Subtotal valor c/ impostos';
-  cartTotGeral.textContent='Total geral';
-  cartMeta.textContent=`${itensSel.length} item(ns)`;
+  cartSelGrid.innerHTML=''; document.getElementById('cartTbody').innerHTML='';
+  document.getElementById('cartSubLiq').textContent='Subtotal valor EXW';
+  document.getElementById('cartTotGeral').textContent='Total geral';
+  document.getElementById('cartMeta').textContent=`${itensSel.length} item(ns)`;
 
   if(itensSel.length===0){
     cartSelGrid.innerHTML='<div style="grid-column:1/-1;padding:10px;background:#fff;border:1px dashed #a3b0ff;border-radius:10px;text-align:center">Nenhum item no carrinho.</div>';
     return;
   }
 
+  let subtotalEXW=0;
   itensSel.forEach((it)=>{
-    const totalLiq = (it.ad * it.qty);
-    const totalImp = (it.an * it.qty);
+    const totalEXW = (it.ad * it.qty);
+    subtotalEXW += totalEXW;
 
     const box=document.createElement('div'); box.className='sel-item';
     box.innerHTML=`
       <div class="imgbox"><img alt="${it.nome}"></div>
       <div class="info">
         <h4>${it.nome}</h4>
-        <div class="row"><div>Total Líq.: <b>${money(totalLiq)}</b></div><div>Total c/ Imp.: <b>${money(totalImp)}</b></div></div>
+        <div class="row"><div>Total EXW: <b>${money(totalEXW)}</b></div></div>
         <div>Qtd: <b>${it.qty}</b></div>
       </div>`;
     const img=box.querySelector('img'); loadImageWithFallback(img,candidatesFor(it.nome));
     cartSelGrid.appendChild(box);
-  });
 
-  let subtotalLiq=0, subtotalImp=0;
-  itensSel.forEach((it)=>{
-    const totalLiq = (it.ad * it.qty);
-    const totalImp = (it.an * it.qty);
-    subtotalLiq += totalLiq; subtotalImp += totalImp;
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td>${it.nome}</td>
       <td class="right">${it.qty}</td>
-      <td class="right">${money(totalLiq)}</td>
-      <td class="right">${money(totalImp)}</td>`;
-    cartTbody.appendChild(tr);
+      <td class="right">${money(totalEXW)}</td>`;
+    document.getElementById('cartTbody').appendChild(tr);
   });
-  cartSubLiq.textContent = `Subtotal valor líquido       ${money(subtotalLiq)}`;
-  cartSubImp.textContent  = `Subtotal valor c/ impostos   ${money(subtotalImp)}`;
-  cartTotGeral.textContent= `Total geral                   ${money(subtotalImp)}`;
+
+  document.getElementById('cartSubLiq').textContent = `Subtotal valor EXW           ${money(subtotalEXW)}`;
+  document.getElementById('cartTotGeral').textContent= `Total geral                   ${money(subtotalEXW)}`;
 }
 
 /* ===== Eventos ===== */
 inputSearch.addEventListener('input',applyFilter);
 btnClearSearch.addEventListener('click',()=>{ inputSearch.value=""; applyFilter(); });
 
-/* Limpar carrinho (confirmação) */
+/* Limpar carrinho */
 btnClear.addEventListener('click',()=>{
   const temItens = state.all.some(it => it.incluir);
   if(!temItens){ alert('O carrinho já está vazio.'); return; }
@@ -616,7 +602,7 @@ btnClear.addEventListener('click',()=>{
 
 /* Abrir/fechar carrinho */
 btnCart.addEventListener('click',()=>{ buildCart(); cartOverlay.classList.add('show'); });
-btnCloseCart.addEventListener('click',()=> cartOverlay.classList.remove('show'));
+document.getElementById('btnCloseCart').addEventListener('click',()=> cartOverlay.classList.remove('show'));
 
 /* Overlay orçamento + impressão */
 btnCloseQuote.addEventListener('click',()=>{ buildPreview(); overlay.classList.add('show'); });
