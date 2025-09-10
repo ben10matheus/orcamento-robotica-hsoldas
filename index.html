@@ -66,9 +66,9 @@
   .toolbar{
     position:relative; z-index:1; max-width:1280px; margin:18px auto 8px; padding:14px 16px;
     background:var(--panel); border:1px solid var(--line); border-radius:14px;
-    /* colunas: logo-mini | busca | limpar carrinho | UF | km | carrinho | fechar orçamento */
+    /* colunas: logo-mini | busca | limpar carrinho | carrinho | fechar orçamento */
     display:grid;
-    grid-template-columns: auto 1fr auto auto auto auto auto;
+    grid-template-columns: auto 1fr auto auto auto;
     gap:10px;
     align-items:end;
   }
@@ -188,7 +188,7 @@
     .brand-mini img{ height:42px }
     .search-wrap{ flex-direction: column; align-items: stretch; gap:8px }
     #search{ width:100%; font-size:16px; padding:12px 14px }
-    #btnClearSearch, #btnClear, #btnCloseQuote, #btnCart{ width:100% } /* em mobile ocupa linha toda */
+    #btnClearSearch, #btnClear, #btnCloseQuote, #btnCart{ width:100% }
     .grid{ grid-template-columns:1fr }
     .sheet{ margin:12px; max-height:90vh }
     .sel-grid{ grid-template-columns:1fr }
@@ -233,28 +233,7 @@
     <button class="btn danger" id="btnClear">Limpar carrinho</button>
   </div>
 
-  <div>
-    <label>UF do cliente</label>
-    <select id="uf">
-      <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
-      <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
-      <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
-      <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
-      <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
-      <option value="PR" selected>PR</option><option value="PE">PE</option><option value="PI">PI</option>
-      <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
-      <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
-      <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
-      <option value="outros">Outros</option>
-    </select>
-  </div>
-
-  <div>
-    <label>Distância (Km) — custo somado ao 1º item</label>
-    <input id="km" type="number" min="0" step="1" value="0" />
-  </div>
-
-  <!-- Carrinho AGORA na toolbar (à direita) -->
+  <!-- Carrinho na toolbar (à direita) -->
   <div style="align-self:end">
     <label>&nbsp;</label>
     <button class="cart-btn" id="btnCart" title="Abrir carrinho" aria-label="Abrir carrinho">
@@ -370,11 +349,9 @@ function simpleLogout(){
 // Exigir login antes de prosseguir
 const sess = routeGuard({ loginPath: 'login.html' });
 
-/* ===== Config ===== */
-const TARIFA_KM = 1.6; // custo por Km (deslocamento técnico)
-
 /* ===== Helpers ===== */
-const money = v => isFinite(v) ? v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '-';
+/* -> Agora o catálogo é em DÓLAR */
+const money = v => isFinite(v) ? v.toLocaleString('en-US',{style:'currency',currency:'USD'}) : '-';
 const parseBR = s => {
   if(typeof s==='number') return s;
   const x=String(s).replace(/[^\d,.-]+/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',', '.');
@@ -400,10 +377,10 @@ function loadImageWithFallback(img, list, i=0){
 }
 
 /* ===== Estado / DOM ===== */
-const state={ uf:'PR', km:0, all:[], filtered:[] };
+const state={ all:[], filtered:[] };
 
 const $=(s,e=document)=>e.querySelector(s);
-const catalog=$('#catalog'), hint=$('#hint'), inputSearch=$('#search'), selectUF=$('#uf'), inputKM=$('#km');
+const catalog=$('#catalog'), hint=$('#hint'), inputSearch=$('#search');
 const btnClear=$('#btnClear'), btnClearSearch=$('#btnClearSearch');
 const btnCloseQuote=$('#btnCloseQuote'), overlay=$('#overlay'), btnPrint=$('#btnPrint'), btnBack=$('#btnBack');
 const selGrid=$('#selGrid'), tbody=$('#tbody'), subLiq=$('#subLiq'), subImp=$('#subImp'), totGeral=$('#totGeral'), meta=$('#meta'), sug=$('#sug');
@@ -420,10 +397,9 @@ const cartOverlay=$('#cartOverlay'), btnCloseCart=$('#btnCloseCart');
 const cartSelGrid=$('#cartSelGrid'), cartTbody=$('#cartTbody');
 const cartSubLiq=$('#cartSubLiq'), cartSubImp=$('#cartSubImp'), cartTotGeral=$('#cartTotGeral'), cartMeta=$('#cartMeta');
 
-/* ===== Carregar JSON por UF ===== */
-async function loadDataByUF(uf){
-  const map={PR:'data/pr.json', outros:'data/outros.json'};
-  const url= uf==='PR' ? map.PR : map.outros;
+/* ===== Carregar JSON único (em dólar) ===== */
+async function loadData(){
+  const url = 'data/pr.json'; // ajuste aqui se quiser usar 'data/outros.json'
   try{
     const res=await fetch(url,{cache:'no-store'});
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -505,7 +481,7 @@ function renderCards(){
 function applyFilter(){
   const q=inputSearch.value.trim().toLowerCase();
   if(q.length<1){
-    state.filtered = [];          // mantém vazio quando não há busca
+    state.filtered = [];
     renderCards();
     return;
   }
@@ -515,15 +491,13 @@ function applyFilter(){
 
 /* ===== Preview (Fechar orçamento) ===== */
 function buildPreview(){
-  const km = Math.max(0, parseInt(inputKM.value||'0',10));
-  const custo = km * TARIFA_KM; // somado só no 1º item
   const itensSel = state.all.filter(it=>it.incluir);
 
   selGrid.innerHTML=''; tbody.innerHTML='';
   subLiq.textContent='Subtotal valor líquido';
   subImp.textContent='Subtotal valor c/ impostos';
   totGeral.textContent='Total geral';
-  meta.textContent=`Somente itens selecionados • UF: ${selectUF.value.toUpperCase()} • Distância: ${km} Km`;
+  meta.textContent=`Somente itens selecionados`;
 
   if(itensSel.length===0){
     selGrid.innerHTML='<div style="grid-column:1/-1;padding:10px;background:#fff;border:1px dashed #a3b0ff;border-radius:10px;text-align:center">Nenhum item selecionado.</div>';
@@ -531,9 +505,9 @@ function buildPreview(){
   }
 
   // cartões acima da tabela
-  itensSel.forEach((it,idx)=>{
-    const totalLiq = (it.ad * it.qty) + (idx===0 ? custo : 0);
-    const totalImp = (it.an * it.qty) + (idx===0 ? custo : 0);
+  itensSel.forEach((it)=>{
+    const totalLiq = (it.ad * it.qty);
+    const totalImp = (it.an * it.qty);
 
     const box=document.createElement('div'); box.className='sel-item';
     box.innerHTML=`
@@ -551,9 +525,9 @@ function buildPreview(){
 
   // tabela (apenas Qtd / Totais)
   let subtotalLiq=0, subtotalImp=0;
-  itensSel.forEach((it,idx)=>{
-    const totalLiq = (it.ad * it.qty) + (idx===0 ? custo : 0);
-    const totalImp = (it.an * it.qty) + (idx===0 ? custo : 0);
+  itensSel.forEach((it)=>{
+    const totalLiq = (it.ad * it.qty);
+    const totalImp = (it.an * it.qty);
     subtotalLiq += totalLiq; subtotalImp += totalImp;
 
     const tr=document.createElement('tr');
@@ -578,24 +552,22 @@ function updateCartBadge(){
   cartBadge.style.display = count > 0 ? 'inline-block' : 'none';
 }
 function buildCart(){
-  const km = Math.max(0, parseInt(inputKM.value||'0',10));
-  const custo = km * TARIFA_KM;
   const itensSel = state.all.filter(it=>it.incluir);
 
   cartSelGrid.innerHTML=''; cartTbody.innerHTML='';
   cartSubLiq.textContent='Subtotal valor líquido';
   cartSubImp.textContent='Subtotal valor c/ impostos';
   cartTotGeral.textContent='Total geral';
-  cartMeta.textContent=`UF: ${selectUF.value.toUpperCase()} • Distância: ${km} Km • ${itensSel.length} item(ns)`;
+  cartMeta.textContent=`${itensSel.length} item(ns)`;
 
   if(itensSel.length===0){
     cartSelGrid.innerHTML='<div style="grid-column:1/-1;padding:10px;background:#fff;border:1px dashed #a3b0ff;border-radius:10px;text-align:center">Nenhum item no carrinho.</div>';
     return;
   }
 
-  itensSel.forEach((it, idx)=>{
-    const totalLiq = (it.ad * it.qty) + (idx===0 ? custo : 0);
-    const totalImp = (it.an * it.qty) + (idx===0 ? custo : 0);
+  itensSel.forEach((it)=>{
+    const totalLiq = (it.ad * it.qty);
+    const totalImp = (it.an * it.qty);
 
     const box=document.createElement('div'); box.className='sel-item';
     box.innerHTML=`
@@ -610,9 +582,9 @@ function buildCart(){
   });
 
   let subtotalLiq=0, subtotalImp=0;
-  itensSel.forEach((it,idx)=>{
-    const totalLiq = (it.ad * it.qty) + (idx===0 ? custo : 0);
-    const totalImp = (it.an * it.qty) + (idx===0 ? custo : 0);
+  itensSel.forEach((it)=>{
+    const totalLiq = (it.ad * it.qty);
+    const totalImp = (it.an * it.qty);
     subtotalLiq += totalLiq; subtotalImp += totalImp;
     const tr=document.createElement('tr');
     tr.innerHTML=`
@@ -630,14 +602,6 @@ function buildCart(){
 /* ===== Eventos ===== */
 inputSearch.addEventListener('input',applyFilter);
 btnClearSearch.addEventListener('click',()=>{ inputSearch.value=""; applyFilter(); });
-
-selectUF.addEventListener('change',async()=>{
-  state.uf=selectUF.value;
-  await loadDataByUF(state.uf);
-  applyFilter();
-});
-
-inputKM.addEventListener('input',e=>{state.km=Math.max(0,parseInt(e.target.value||'0',10));});
 
 /* Limpar carrinho (confirmação) */
 btnClear.addEventListener('click',()=>{
@@ -674,7 +638,7 @@ if(window.matchMedia){
 /* ===== Boot ===== */
 (async function init(){
   if(userNameEl && sess && sess.user){ userNameEl.textContent = sess.user.nome || sess.user.email || 'Usuário'; }
-  await loadDataByUF(state.uf);   // inicia vazio; só mostra itens após buscar
+  await loadData();   // inicia vazio; só mostra itens após buscar
 })();
 </script>
 </body>
